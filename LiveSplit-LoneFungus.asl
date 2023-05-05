@@ -162,6 +162,7 @@ startup {
     vars.ingame = false;
     vars.room = -1;
     vars.roomTracker = null;
+    vars.saveFileReset = false;
 
     vars.UpdateRoom = (Action)(() => {
         if(vars.roomTracker == null) {
@@ -239,9 +240,9 @@ startup {
     settings.Add("sp-upgrade", false, "TODO: Upgrades", "sp");
     settings.Add("sp-collectible", false, "TODO: Collectibles?", "sp");
 
-    settings.Add("rs", false, "Resets");
+    settings.Add("rs", true, "Resets");
+    settings.Add("rs-delete", true, "Deleting a Save", "rs");
     settings.Add("rs-menu", false, "Main Menu", "rs");
-    settings.Add("rs-delete", false, "TODO: Deleting a Save?", "rs");
 
     settings.Add("tm-force", false, "Force current timing method to Game Time");
 
@@ -250,6 +251,14 @@ startup {
 
 init
 {
+    vars.fileWatcher = new FileSystemWatcher();
+    vars.fileWatcher.Path = new System.IO.FileInfo(game.MainModule.FileName).Directory.FullName;
+    vars.fileWatcher.Filter = "save0*";
+    vars.fileWatcher.Deleted += (System.IO.FileSystemEventHandler)delegate(object o, System.IO.FileSystemEventArgs e)
+    {
+        vars.saveFileReset = true;
+    };
+
     vars.Init = (Action)delegate()
     {
         if (settings["debug"]) print("[Fungus] init");
@@ -355,7 +364,10 @@ update
     }
 
     if (vars.state["room"].Current <= 1)
+    {
         vars.ingame = false;
+        vars.fileWatcher.EnableRaisingEvents = true;
+    }
 
     if (!vars.ingame && vars.state["room"].Current > 1)
     {
@@ -365,6 +377,8 @@ update
 
     if (!vars.ingame)
         return true;
+
+    vars.fileWatcher.EnableRaisingEvents = false;
 
     foreach (var cat in vars.save)
     {
@@ -395,6 +409,9 @@ onStart {
 
 split {
     if (!settings["sp"])
+        return false;
+
+    if (!vars.ingame)
         return false;
 
     if (settings["sp-ending-top"] && vars.save["ending"]["top"].Changed && vars.save["ending"]["top"].Current > 0)
@@ -466,6 +483,13 @@ reset {
         if (settings["debug"]) print("[Fungus] Reset: Main Menu");
         return true;
     };
+
+    if (settings["rs-delete"] && vars.saveFileReset)
+    {
+        vars.saveFileReset = false;
+        if (settings["debug"]) print("[Fungus] Reset: Save file deleted");
+        return true;
+    }
 }
 
 onReset {

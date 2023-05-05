@@ -12,10 +12,10 @@ All of these are optional, make sure to check the settings.
 - Starting:
   + [x] "Play Game" button or selecting an existing save slot
 - Splitting:
-  + [x] Specific/Any ending (SURFACE REQUIRES A FRESH SAVE FILE WITH NO BOSS KILL ON RECORD)
+  + [x] Both endings (SURFACE REQUIRES A FRESH SAVE FILE WITH NO BOSS KILL ON RECORD)
   + [x] Specific/Any new area discovered
   + [x] Specific/Any ability, spell, emblem, relic or item pickup
   + [ ] TODO: Upgrade, mapshroom, mindshroom, ladybug, astral fragment and brainnode pickups?
 - Resetting:
+  + [x] Deleting a save file
   + [x] Main menu
-  + [ ] TODO: Deleting a save file
