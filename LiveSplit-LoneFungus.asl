@@ -226,8 +226,8 @@ startup {
     foreach (var cat in vars.splits)
     {
         var catname = "sp-" + cat.Key;
-        settings.Add(catname, true, cat.Key, "sp");
-        settings.Add(catname+"-any", true, "All "+cat.Key, catname);
+        settings.Add(catname, false, cat.Key, "sp");
+        settings.Add(catname+"-any", false, "All "+cat.Key, catname);
         foreach (var split in cat.Value)
         {
             var name = "sp-" + cat.Key + "-" + split.Key;
