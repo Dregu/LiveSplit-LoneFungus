@@ -144,6 +144,20 @@ startup {
         }
     };
 
+    vars.areas = new Dictionary<string, int[]>{
+        { "Color Caverns", new int[]{ 5, 8, 14, 26, 30, 32, 34, 37, 38, 44, 47 } },
+        { "Mechanical Fort", new int[]{ 50, 56, 63, 69, 71, 72, 73 } },
+        { "Acid Dungeon", new int[]{ 173, 185, 203, 205, 209, 212, 213 } },
+        { "Lava Temple", new int[]{ 216, 227, 228, 235 } },
+        { "Corrupted Tunnels", new int[]{ 143, 156, 171 } },
+        { "Gold Mines", new int[]{ 253, 266, 269, 272, 277 } },
+        { "Undergrounds", new int[]{ 280, 304, 305 } },
+        { "Frozen Depths", new int[]{ 308, 339, 340 } },
+        { "Mossy Ruins", new int[]{ 344, 350, 358, 359 } },
+        { "Surface (reach top)", new int[]{ 379, 381 } }
+    };
+    vars.seenAreas = new List<string>();
+
     vars.igt = 0;
     vars.ingame = false;
     vars.room = -1;
@@ -162,7 +176,7 @@ startup {
                 vars.roomTracker = vars.CreateTextComponent("Room:");
         }
 
-        vars.roomTracker.Text2 = Convert.ToString(vars.room);
+        vars.roomTracker.Text2 = Convert.ToString(vars.room+1);
     });
 
     vars.CreateTextComponent = (Func<string, dynamic>)((name) => {
@@ -173,33 +187,41 @@ startup {
         return textComponent.Settings;
     });
 
-    vars.AddSaveWatcher = (Func<string, string, int, int, bool>)((cat, name, y, x) => {
+    vars.AddSaveWatcher = (Func<string, string, int, int, bool, bool>)((cat, name, y, x, debug) => {
         if (!vars.save.ContainsKey(cat))
             vars.save[cat] = new MemoryWatcherList();
         IntPtr addr = vars.dataAddr + (y * vars.dimx + x) * 4;
         vars.save[cat].Add(new MemoryWatcher<int>(addr) { Name = name });
-        print("[Fungus] Added MemoryWatcher: " + cat + ", " + name + ", " + y.ToString() + ", " + x.ToString());
+        if (debug) print("[Fungus] Added MemoryWatcher: " + cat + ", " + name + ", " + y.ToString() + ", " + x.ToString());
         return true;
     });
 
-    vars.AddSplit = (Func<string, string, bool>)((cat, name) => {
+    vars.AddSplit = (Func<string, string, bool, bool>)((cat, name, debug) => {
         try {
             var split = vars.splits[cat][name];
             int y = split.Item1;
             int x = split.Item2;
-            vars.AddSaveWatcher(cat, name, y, x);
+            vars.AddSaveWatcher(cat, name, y, x, debug);
         }
         catch (Exception e)
         {
-            print("[Fungus] Can't add missing split: " + cat + ", " + name);
+            if (debug) print("[Fungus] Can't add missing split: " + cat + ", " + name);
         }
         return true;
     });
 
     settings.Add("sp", true, "Splits");
     settings.Add("sp-ending", true, "Endings", "sp");
-    settings.Add("sp-ending-top", true, "Surface (final hit on boss)", "sp-ending");
-    settings.Add("sp-ending-bottom", true, "Underground (cutscene)", "sp-ending");
+    settings.Add("sp-ending-top", true, "Surface ONLY WORKS ON SAVE WITH NO BOSS KILL", "sp-ending");
+    settings.Add("sp-ending-bottom", true, "Underground", "sp-ending");
+
+    settings.Add("sp-area", false, "Areas (first enter new area)", "sp");
+    settings.Add("sp-area-any", false, "All Areas (except Grotto, duh)", "sp-area");
+    foreach (var area in vars.areas)
+    {
+        var name = "sp-area-" + area.Key;
+        settings.Add(name, false, area.Key, "sp-area");
+    }
 
     foreach (var cat in vars.splits)
     {
@@ -217,11 +239,11 @@ startup {
     settings.Add("sp-upgrade", false, "TODO: Upgrades", "sp");
     settings.Add("sp-collectible", false, "TODO: Collectibles?", "sp");
 
-    settings.Add("rs", true, "Resets");
-    settings.Add("rs-menu", false, "Main menu", "rs");
-    settings.Add("rs-delete", false, "TODO: Deleting a save file", "rs");
+    settings.Add("rs", false, "Resets");
+    settings.Add("rs-menu", false, "Main Menu", "rs");
+    settings.Add("rs-delete", false, "TODO: Deleting a Save?", "rs");
 
-    settings.Add("tm-force", true, "Force LiveSplit timing method to Game Time");
+    settings.Add("tm-force", false, "Force current timing method to Game Time");
 
     settings.Add("debug", false, "Debug");
 }
@@ -230,7 +252,7 @@ init
 {
     vars.Init = (Action)delegate()
     {
-        print("[Fungus] init");
+        if (settings["debug"]) print("[Fungus] init");
         vars.ingame = false;
         vars.size = 0;
 
@@ -261,7 +283,7 @@ init
         success = savePtr.DerefOffsets(game, out saveAddr);
         if (success && vars.room > 1)
         {
-            print("[Fungus] savePtr: " + saveAddr.ToString("X"));
+            if (settings["debug"]) print("[Fungus] savePtr: " + saveAddr.ToString("X"));
 
             vars.save["meta"].Add(new MemoryWatcher<int>(saveAddr)  { Name = "dimx" });
             vars.save["meta"].Add(new MemoryWatcher<int>(saveAddr+4)  { Name = "dimy" });
@@ -275,7 +297,7 @@ init
 
             vars.dataAddr = saveAddr + 0x20;
 
-            print("[Fungus] dataPtr: " + vars.dataAddr.ToString("X"));
+            if (settings["debug"]) print("[Fungus] dataPtr: " + vars.dataAddr.ToString("X"));
             IntPtr igtAddr = vars.dataAddr + (2 * vars.dimx + 41) * 4;
 
             vars.save["igt"].Add(new MemoryWatcher<int>(igtAddr+8) { Name = "h" });
@@ -286,9 +308,9 @@ init
             int m = game.ReadValue<int>(igtAddr+4);
             int s = game.ReadValue<int>(igtAddr);
 
-            print("[Fungus] IGT should be " + h.ToString() + ":" + m.ToString() + ":" + s.ToString() + ", hope that makes sense");
+            if (settings["debug"]) print("[Fungus] IGT should be " + h.ToString() + ":" + m.ToString() + ":" + s.ToString() + ", hope that makes sense");
 
-            vars.AddSaveWatcher("ending", "top", 2, 99);
+            vars.AddSaveWatcher("ending", "top", 2, 99, settings["debug"]);
 
             foreach (var cat in vars.splits)
             {
@@ -299,7 +321,7 @@ init
                     var name = "sp-" + cat.Key + "-" + split.Key;
                     if (settings[name] || settings[catname+"-any"])
                     {
-                        vars.AddSaveWatcher(cat.Key, split.Key, split.Value.Item1, split.Value.Item2);
+                        vars.AddSaveWatcher(cat.Key, split.Key, split.Value.Item1, split.Value.Item2, settings["debug"]);
                     }
                 }
             }
@@ -320,21 +342,16 @@ update
 
     if (vars.state["state"].Changed)
     {
-        print("[Fungus] state " + vars.state["state"].Old.ToString() + " -> " + vars.state["state"].Current.ToString());
+        if (settings["debug"]) print("[Fungus] state " + vars.state["state"].Old.ToString() + " -> " + vars.state["state"].Current.ToString());
     }
 
     if (vars.state["room"].Changed)
     {
         vars.room = vars.state["room"].Current;
-        if (settings["debug"]) vars.UpdateRoom();
-        print("[Fungus] room " + vars.state["room"].Old.ToString() + " -> " + vars.state["room"].Current.ToString());
-    }
-
-    if (vars.state["area"].Changed
-        && vars.state["area"].Current != 0 && vars.state["area"].Old != 0     // warped??
-        && vars.state["area"].Current != 66 && vars.state["area"].Old != 66)  // shrined??
-    {
-        print("[Fungus] area " + vars.state["area"].Old.ToString() + " -> " + vars.state["area"].Current.ToString());
+        if (settings["debug"]) {
+            vars.UpdateRoom();
+            print("[Fungus] room " + (vars.state["room"].Old+1).ToString() + " -> " + (vars.state["room"].Current+1).ToString());
+        }
     }
 
     if (vars.state["room"].Current <= 1)
@@ -356,7 +373,7 @@ update
 
     if (vars.state["room"].Current > 1 && vars.save["meta"]["size"].Current != vars.size)
     {
-        print("[Fungus] save invalidated, reinit " + vars.save["meta"]["size"].Current.ToString() + " " + vars.size.ToString());
+        if (settings["debug"]) print("[Fungus] save invalidated, reinit " + vars.save["meta"]["size"].Current.ToString() + " " + vars.size.ToString());
         vars.Init();
         return false;
     }
@@ -373,21 +390,22 @@ start {
 
 onStart {
     vars.igt = 0;
+    vars.seenAreas.Clear();
 }
 
 split {
     if (!settings["sp"])
         return false;
 
-    if (settings["sp-ending-top"] && vars.save["ending"]["top"].Current > 0)
+    if (settings["sp-ending-top"] && vars.save["ending"]["top"].Changed && vars.save["ending"]["top"].Current > 0)
     {
-        print("[Fungus] Split: Ending, Surface");
+        if (settings["debug"]) print("[Fungus] Split: Ending, Surface");
         return true;
     }
 
-    if (settings["sp-ending-bottom"] && vars.state["room"].Current == 383)
+    if (settings["sp-ending-bottom"] && vars.state["room"].Changed && (vars.state["room"].Current+1) == 384)
     {
-        print("[Fungus] Split: Ending, Underground");
+        if (settings["debug"]) print("[Fungus] Split: Ending, Underground");
         return true;
     }
 
@@ -405,13 +423,34 @@ split {
                     var watcher = vars.save[cat.Key][split.Key];
                     if (watcher.Changed && watcher.Old == 0)
                     {
-                        print("[Fungus] Split: " + cat.Key + ", " + split.Key);
+                        if (settings["debug"]) print("[Fungus] Split: " + cat.Key + ", " + split.Key);
                         return true;
                     }
                 }
                 catch(Exception e)
                 {
                     vars.AddSplit(cat.Key, split.Key);
+                }
+            }
+        }
+    }
+
+    if (settings["sp-area"] && vars.state["room"].Changed)
+    {
+        foreach (var area in vars.areas)
+        {
+            if (vars.seenAreas.Contains(area.Key)) continue;
+            var name = "sp-area-" + area.Key;
+            if (settings["sp-area-any"] || settings[name])
+            {
+                foreach (var room in area.Value)
+                {
+                    if (vars.state["room"].Current+1 == room)
+                    {
+                        if (settings["debug"]) print("[Fungus] Split: Area, " + area.Key + ", " + room.ToString());
+                        vars.seenAreas.Add(area.Key);
+                        return true;
+                    }
                 }
             }
         }
@@ -424,13 +463,14 @@ reset {
 
     if (vars.state["room"].Current <= 1 && settings["rs-menu"])
     {
-        print("[Fungus] Reset: Main Menu");
+        if (settings["debug"]) print("[Fungus] Reset: Main Menu");
         return true;
     };
 }
 
 onReset {
     vars.igt = 0;
+    vars.seenAreas.Clear();
 }
 
 isLoading
