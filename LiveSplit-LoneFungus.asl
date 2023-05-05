@@ -3,7 +3,7 @@
 state("Lone Fungus") {}
 
 startup {
-    refreshRate = 15;
+    refreshRate = 30;
 
     vars.splits = new Dictionary<string, Dictionary<string, Tuple<int, int>>>{
         {

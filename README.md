@@ -8,14 +8,14 @@ All of these are optional, make sure to check the settings.
 
 - Timing:
   + [x] Game time with one second accuracy (like the game)
-  + [ ] Game time with hundreds of a second accuracy (maybe)
+  + [ ] TODO: Game time with hundreds of a second accuracy (maybe)
 - Starting:
   + [x] "Play Game" button or selecting an existing save slot
 - Splitting:
-  + [x] Specific/Any ending
+  + [x] Specific/Any ending (SURFACE REQUIRES A FRESH SAVE FILE WITH NO BOSS KILL ON RECORD)
+  + [x] Specific/Any new area discovered
   + [x] Specific/Any ability, spell, emblem, relic or item pickup
-  + [ ] Specific/Any new area discovered
-  + [ ] Any upgrade, mindshroom, ladybug, astral fragment or brainnode pickup
+  + [ ] TODO: Upgrade, mapshroom, mindshroom, ladybug, astral fragment and brainnode pickups?
 - Resetting:
   + [x] Main menu
-  + [ ] Deleting a save file
+  + [ ] TODO: Deleting a save file
