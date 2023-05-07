@@ -161,23 +161,23 @@ startup {
     vars.igt = 0;
     vars.ingame = false;
     vars.room = -1;
-    vars.roomTracker = null;
+    vars.debugInfo = null;
     vars.saveFileReset = false;
 
     vars.UpdateRoom = (Action)(() => {
-        if(vars.roomTracker == null) {
+        if(vars.debugInfo == null) {
             foreach (dynamic component in timer.Layout.Components) {
-                if (component.GetType().Name == "TextComponent" && component.Settings.Text1 == "Room:") {
-                    vars.roomTracker = component.Settings;
+                if (component.GetType().Name == "TextComponent" && component.Settings.Text1 == "Debug:") {
+                    vars.debugInfo = component.Settings;
                     break;
                 }
             }
 
-            if(vars.roomTracker == null)
-                vars.roomTracker = vars.CreateTextComponent("Room:");
+            if(vars.debugInfo == null)
+                vars.debugInfo = vars.CreateTextComponent("Debug:");
         }
 
-        vars.roomTracker.Text2 = Convert.ToString(vars.room+1);
+        vars.debugInfo.Text2 = "Room: " + Convert.ToString(vars.room+1) + " | Save: " + Convert.ToString(vars.dimx) + "x" + Convert.ToString(vars.dimy);
     });
 
     vars.CreateTextComponent = (Func<string, dynamic>)((name) => {
@@ -246,6 +246,7 @@ startup {
 
     settings.Add("tm-force", false, "Force current timing method to Game Time");
 
+    settings.Add("nonag", false, "Don't nag about old saves, I know what I'm doing");
     settings.Add("debug", false, "Debug");
 }
 
@@ -303,6 +304,18 @@ init
             vars.dimy = game.ReadValue<int>(saveAddr+4);
             vars.dimz = game.ReadValue<int>(saveAddr+8);
             vars.size = game.ReadValue<int>(saveAddr+0x1C);
+
+            if ((vars.dimx < 199 || vars.dimy < 26) && !settings["nonag"])
+            {
+                MessageBox.Show(
+                "You have launched the game with pre-1.0.17 saves present!\nClose the game and move your old files to safety.\nOr delete them ingame and restart the game.\n\n"+
+                "Having old saves will cause even fresh save files to initialize to the old save dimensions because the engine is horrible.\n\n"+
+                "Consequently, having to resize the save during the run will probably break the autosplitter right around the first boss.\n\n"+
+                "You have been warned.\n\n"+
+                "(Save dimensions: "+vars.dimx.ToString()+"x"+vars.dimy.ToString()+", should be 200x30.)",
+                "Lone Fungus Autosplitter",
+                MessageBoxButtons.OK,MessageBoxIcon.Exclamation);
+            }
 
             vars.dataAddr = saveAddr + 0x20;
 
