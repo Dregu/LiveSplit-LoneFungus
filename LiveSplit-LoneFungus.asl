@@ -244,7 +244,9 @@ startup {
     settings.Add("rs-delete", true, "Deleting a Save", "rs");
     settings.Add("rs-menu", false, "Main Menu", "rs");
 
-    settings.Add("tm-force", false, "Force current timing method to Game Time");
+    settings.Add("tm", true, "Timing");
+    settings.Add("tm-force", false, "Force current timing method to Game Time", "tm");
+    settings.Add("tm-load", false, "Load Removal instead of IGT", "tm");
 
     settings.Add("nonag", false, "Don't nag about old saves, I know what I'm doing");
     settings.Add("debug", false, "Debug");
@@ -512,9 +514,13 @@ onReset {
 
 isLoading
 {
+    if (settings["tm-load"])
+        return vars.state["state"].Current != 3;
+        //return vars.state["room2"].Current == -1;
     return true;
 }
 
 gameTime {
-    return TimeSpan.FromSeconds(vars.igt);
+    if (!settings["tm-load"])
+        return TimeSpan.FromSeconds(vars.igt);
 }
