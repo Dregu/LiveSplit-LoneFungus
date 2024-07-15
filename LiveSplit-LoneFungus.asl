@@ -1,4 +1,4 @@
-// Lone Fungus 1.0.16+ autosplitter by Dregu
+// Lone Fungus 1.0.19 and 1.1.x autosplitter by Dregu
 
 state("Lone Fungus") {}
 
@@ -163,6 +163,7 @@ startup {
     vars.room = -1;
     vars.debugInfo = null;
     vars.saveFileReset = false;
+    vars.mainOffset = 0x9E5D4;
 
     vars.UpdateRoom = (Action)(() => {
         if(vars.debugInfo == null) {
@@ -250,6 +251,8 @@ startup {
 
     settings.Add("nonag", false, "Don't nag about old saves, I know what I'm doing");
     settings.Add("debug", false, "Debug");
+    settings.Add("onezero", false, "Force legacy 1.0.x offset (default autodetects 1.0.19)");
+    settings.Add("oneone", false, "Force new 1.1.x offset (default autodetects non-1.0.19)");
 }
 
 init
@@ -264,20 +267,40 @@ init
 
     vars.Init = (Action)delegate()
     {
-        if (settings["debug"]) print("[Fungus] init");
+        if (settings["onezero"])
+        {
+            if (settings["debug"]) print("[Fungus] init on forced 1.0.x " + modules.First().ModuleMemorySize.ToString());
+            vars.mainOffset = 0x9D5CC;
+        }
+        else if (settings["oneone"])
+        {
+            if (settings["debug"]) print("[Fungus] init on forced 1.1.x " + modules.First().ModuleMemorySize.ToString());
+            vars.mainOffset = 0x9E5D4;
+        }
+        else if (modules.First().ModuleMemorySize == 974848)
+        {
+            if (settings["debug"]) print("[Fungus] init on legacy 1.0.19 " + modules.First().ModuleMemorySize.ToString());
+            vars.mainOffset = 0x9D5CC;
+        }
+        else
+        {
+            if (settings["debug"]) print("[Fungus] init on unknown version, assuming 1.1.x " + modules.First().ModuleMemorySize.ToString());
+            vars.mainOffset = 0x9E5D4;
+        }
+
         vars.ingame = false;
         vars.size = 0;
 
         vars.state = new MemoryWatcherList();
 
-        vars.state.Add(new MemoryWatcher<int>(new DeepPointer("Lone Fungus.exe", 0x9D5CC, 0x1E4)) { Name = "state" }); // 0=reset, 1=start loading, 2=loading, 3=loaded, 4=some freeze
+        vars.state.Add(new MemoryWatcher<int>(new DeepPointer("Lone Fungus.exe", vars.mainOffset, 0x1E4)) { Name = "state" }); // 0=reset, 1=start loading, 2=loading, 3=loaded, 4=some freeze
 
         // these are 0-indexed, 1 smaller than game console shows
-        var roomPtr = new DeepPointer("Lone Fungus.exe", 0x9D5CC, 0x1EC);
+        var roomPtr = new DeepPointer("Lone Fungus.exe", vars.mainOffset, 0x1EC);
         vars.state.Add(new MemoryWatcher<int>(roomPtr) { Name = "room" }); // current room number
-        vars.state.Add(new MemoryWatcher<int>(new DeepPointer("Lone Fungus.exe", 0x9D5CC, 0x1F0)) { Name = "room2" }); // same, but -1 when it's loading
+        vars.state.Add(new MemoryWatcher<int>(new DeepPointer("Lone Fungus.exe", vars.mainOffset, 0x1F0)) { Name = "room2" }); // same, but -1 when it's loading
 
-        vars.state.Add(new MemoryWatcher<int>(new DeepPointer("Lone Fungus.exe", 0x9D5CC, -0x5C0)) { Name = "area" }); // seems to change consistently for new areas, but numbers are new and random every run
+        vars.state.Add(new MemoryWatcher<int>(new DeepPointer("Lone Fungus.exe", vars.mainOffset, -0x5C0)) { Name = "area" }); // seems to change consistently for new areas, but numbers are new and random every run
 
         vars.save = new Dictionary<string, MemoryWatcherList>();
         vars.save["meta"] = new MemoryWatcherList();
@@ -290,7 +313,7 @@ init
             vars.room = game.ReadValue<int>(roomAddr);
         }
 
-        var savePtr = new DeepPointer("Lone Fungus.exe", 0x9D5CC, 0xDC, 0x13C, 0x1C, 0x18, 0x4, 0x0);
+        var savePtr = new DeepPointer("Lone Fungus.exe", vars.mainOffset, 0xDC, 0x13C, 0x1C, 0x18, 0x4, 0x0);
         IntPtr saveAddr = IntPtr.Zero;
         success = savePtr.DerefOffsets(game, out saveAddr);
         if (success && vars.room > 1)
