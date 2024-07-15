@@ -1,6 +1,6 @@
 # LiveSplit-LoneFungus
 
-LiveSplit autosplitter ASL script for Lone Fungus. Requires game version 1.0.16+ for all features to work properly.
+LiveSplit autosplitter ASL script for Lone Fungus. Requires game version 1.0.19 or 1.1.x for all features to work properly. (1.1.x not actually tested beyond starting the run successfully.)
 
 ## Features / TODO
 
